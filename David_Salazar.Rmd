@@ -1,0 +1,79 @@
+---
+title: 'Resolve: Prueba Data Scientist'
+author: "David Salazar"
+date: "10/31/2017"
+output: 
+  html_document:
+    toc: true
+---
+
+# 0. Organización
+
+En este documento doy respuesta a las cuatro preguntas en el mismo orden en que fueron
+formualdas. Cada sección en adelante representará una de las respectivas respuestas. El código detrás de todas las figuras y números presentados está disponible en [este](https://github.com/davidsalazarv95/Resolve_test) repositorio de GitHub. 
+
+# 1. ¿Cuáles considera que son las variables que determinan el precio de la vivienda?
+
+Para entender qué variables determinan el precio promedio de las viviendas en los barrios, voy a investigar lo siguiente: 1) la variación de los precios y la variación conjunta de los precios con las otras variables; 2) el poder predictivo de estas variaciones. 
+
+Para responder esta pregunta utilizaré las siguientes herramientas. Primero, haré una exploración y
+análisis de datos, principalmente de la variable de interés: **valor** y de su relación con las otras variables en el archivo. Segundo, utilizaré dos algoritmos (**regresión multivariada** y **árboles de decisión**) para determinar el valor explicativo de cada una de las variables sobre **valor**. Tercero, utilizaré **Principal Component Analysis** para analizar qué combinación de variables son las que se relacionan con mayor variación de **valor**. Por último, concluiré la respuesta a esta pregunta. 
+
+## Exploración y análisis de datos
+
+Primero, leemos los datos y confirmamos que no haya datos repetidos ni *missing*. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+source("0-Funciones_Iniciales.R")
+base_datos <- read_and_check()
+```
+
+Un análisis exploratorio nos permite ver la variación singular y conjunta de las variables de interés. Primero, estudiaré la variación singular de la variable **valor**. Segundo, analizaré la variación conjunta de los precios medios en los barrios y las otras variables presentes. 
+
+### Análsis de variable valor
+
+En esta sección, presento un análisis de la variable de interés **valor**. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+source("1-Exploratory_Data_Analysis.R")
+histograma_valor(base_datos)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+summary(base_datos$valor)
+cat("La desviación estándar de valor es: ", round(sd(base_datos$valor), 1))
+```
+
+
+La variable **valor** tiene una mediana de $404.9$ y presenta una asimetría hacía la derecha, presentando un tercer quartil de $477.5$ pero un nivel máximo de $955$. Es decir, hay barrios donde el valor medio de las casas es mucho mayor (más de dos desviaciones estándar superior al tercer cuartil) al del resto de los barrios presentes en la base de datos. 
+
+### Análisis de variación conjunta 
+
+Para analizar la variación conjunta, primero, estudiaré la relación lineal entre todas las variables presentes en la base de datos; segundo, estudiaré por medio de diagramas de dispersión la relación entre la variable **valor** y las variables que están más correlacionadas con esta. 
+
+#### Matriz de correlaciones
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+matriz_correlaciones(base_datos)
+```
+
+Hay que resaltar dos cosas de la matriz de correlaciones: 
+
+1. Hay un cluster de variables que están altamente correlacionadas entre sí y a su vez todas están negativamente correlacionadas con el precio medio de los inmuebles en el barrio. Tales como: **tasaeducativa, crimen, pobreza, movilidad, impuestos, industrial, oxidonitroso**. De este resultado, puedo concluir lo siguiente: hay posibilidad de reducir dimensionalidad sin perder poder explicativo, y esta correlación interna al cluster puede generar problemas de multicolinealidad en posibles regresiones. 
+
+2. Pocas variables están altamente y positivamente correlacionadas con la variable **valor**. Solo la variable **cuartos** parece resaltar. 
+
+Las tres variables que presentan una correlación más fuerte con **valor** son:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+big_three(base_datos)
+```
+
+Es decir, a mayor proporción de personas clasificadas como pobres, y mayor número de estudiantes por profesor, menor tiende a ser el valor promedio de los inmuebles en el barrios. Y, por otro lado, a mayor número de cuartos promedio tiene el barrio, mayor tiende a ser el valor promedio de los inmuebles en el barrio. Esto lo podemos ver explícitamente al graficar para cada barrio el **valor** y su correspondiente **pobreza, cuartos, y tasaeducativa**.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+scatterplots(base_datos)
+```
+
+
+

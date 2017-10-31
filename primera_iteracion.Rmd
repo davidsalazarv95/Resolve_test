@@ -1,0 +1,189 @@
+---
+title: "First iteration"
+output: html_notebook
+---
+
+
+# Reading data
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(hrbrthemes)
+library(viridis)
+```
+
+```{r}
+datos <- read_excel(path = "00 Prueba Data Scientist.xlsx")
+datos
+```
+
+
+```{r}
+names(datos)
+```
+
+# Exploratory Data Analysis
+
+
+```{r}
+summary(datos)
+```
+
+## Crimen
+
+```{r}
+datos %>% 
+  ggplot(aes(x = crimen, y = valor)) +
+    geom_point(alpha = 0.5) +
+    scale_x_log10() +
+    theme_ipsum_rc() +
+    geom_smooth(method = "lm", se = FALSE)
+    
+```
+
+
+
+## Residencial
+
+```{r}
+datos %>% 
+  mutate(residencial = residencial/100) %>% 
+  ggplot(aes(x = residencial, y = valor)) +
+    geom_point() +
+    scale_x_percent() +
+    theme_ipsum_rc()
+```
+
+
+## Industrial
+
+```{r}
+datos %>% 
+  ggplot(aes(x = industrial, y = valor)) +
+    geom_point() +
+    theme_ipsum_rc()
+```
+
+
+
+## rio
+
+```{r}
+datos %>% 
+  mutate(rio = factor(rio)) %>% 
+  ggplot(aes(x = rio, y = valor)) +
+    geom_boxplot() +
+    theme_ipsum_rc()
+```
+
+## oxidonitroso
+
+```{r}
+datos %>% 
+  ggplot(aes(x = oxidonitroso, y = valor)) +
+    geom_point() +
+    theme_ipsum_rc()
+```
+
+## cuartos
+
+```{r}
+datos %>% 
+  ggplot(aes(x = cuartos, y = valor)) +
+    geom_point() +
+    theme_ipsum_rc()
+```
+
+## distanciaempleo
+
+```{r}
+datos %>% 
+  ggplot(aes(x = distanciaempleo, y = valor)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme_ipsum_rc()
+```
+
+
+
+## movilidad 
+
+```{r}
+datos %>% 
+  ggplot(aes(x = movilidad, y = valor)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme_ipsum_rc()
+```
+
+
+
+
+## impuestos
+
+```{r}
+datos %>% 
+  ggplot(aes(x = impuestos, y = valor)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme_ipsum_rc()
+```
+
+
+
+## tasaeducativa
+
+```{r}
+datos %>% 
+  ggplot(aes(x = tasaeducativa, y = valor)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme_ipsum_rc()
+```
+
+
+
+## pobreza
+
+```{r}
+datos %>% 
+  ggplot(aes(x = pobreza, y = valor)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme_ipsum_rc()
+```
+
+
+
+## mapa
+
+```{r}
+datos %>% 
+  ggplot(aes(x = coordx, y = coordy, color = valor))+
+    geom_point() +
+    theme_ipsum_rc() +
+    scale_color_viridis()
+```
+
+# Ideas
+
+Mantener respuesta con estructura piramidal. 
+
+
+1- 
+  1. Examen pre-eliminar de variable interes. Histograma. 
+  2. Ubicación y ubicación con valor en cubetas. 
+  2. Matriz de Correlaciones.
+  2. Exploratory data analysis. Variables numericas estandarizadas, histograma. Eje y en plata. Matriz de correlación. 
+  3. Análisis de regresión. 
+  4. PCA: combinaciones. deseabilidad ubicación relativo a ciudad, deseabilidad barrio, condiciones económicas del barrio. 
+  5. Importancia relativa con variables de random forest. 
+2- 
+  1. Dividir en train/validation/test set. 
+  2. Evaluar con scatterplot de valor real y valor predicho. Utilizar para outliers. 
+3-
+  1. Building characteristics. Here they are not existent, except number of rooms. space not constructed. number of bathrooms. building age. Exercise presupposes that the old adage, location, location, location is true. 
+4-
+  1. Identificación con multinormal. 
+  2. Identificación donde algoritmos fallan. 
