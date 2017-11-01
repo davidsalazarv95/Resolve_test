@@ -1,5 +1,5 @@
 ################ Lectura de Datos ################ 
-
+library(plyr)
 library(tidyverse)
 library(readxl)
 

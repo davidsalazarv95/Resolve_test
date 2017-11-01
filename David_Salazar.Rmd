@@ -1,7 +1,7 @@
 ---
 title: 'Resolve: Prueba Data Scientist'
 author: "David Salazar"
-date: "10/31/2017"
+date: "11/01/2017"
 output: 
   html_document:
     toc: true
@@ -139,6 +139,110 @@ Después de realizar un análisis exploratorio de los datos, un análisis de reg
 Luego, el valor medio de los inmuebles en el barrio está determinado por dos tipos de variables. Primero, una que determina la calidad de vida dentro del barrio. En este caso, **pobreza** tiene suficiente riqueza de información y es la más importante dentro de este tipo de variables. Segundo, la calidad del inmueble a comprar dentro del barrio, que en este caso es recogida en los datos por la variable **cuartos**.
 
 Por lo tanto, concluyo que las variables que principalmente determinan el precio medio de los inmuebles dentro de un barrio son: **la proporción de personas clasificadas como pobres y el número de cuartos promedio**.
+
+# 2. Formule hipótesis sobre cómo las variables descritas en el punto anterior pueden incidir en el precio de los inmuebles, yendo más allá de los resultados matemáticos.
+
+Cualquier hipótesis que podamos formular, y posteriormente aprender de los datos, tendrá que seguir la lección básica del aprendizaje estadístico para poder generalizar y predecir en datos de los cuales no ha aprendido directamente. Esta lección es el *trade-off* entre el sesgo y la varianza en las hipótesis que formulamos. Si tenemos un espacio de posibles hipótesis muy grande, donde podemos aproximar cualquier función, posiblemente reduciremos el sesgo pero estaremos corriendo el riesgo de aumentar la varianza. Sin embargo, si tenemos un espacio de posibles hipótesis muy reducido y con poca varianza, corremos el riesgo de aumentar el sesgo.
+
+El factor que determina en qué posición del trade-off podemos estar es la cantidad y riqueza de datos que tenemos. Debido a que en este caso tengo a dispoción alrededor de *500* datos, voy a utilizar primero unos algoritmos con poca varianza, como es *ridge regression, lasso regression y regresión*, y posteriormente utilizare UN algoritmo con mayor varianza, como *gradient boosting trees*. En todos los casos, voy a utilizar una división simple de los datos para el aprendizaje, la validación y la estimación del error generalizable. Respectivamente, una división de datos en *train set, validation y test set*.  Mediante *cross-validation con el train set* compararé los errores por fuera de muestra de todos los algoritmos y sus respectivas combinaciones y escogeré uno de ellos, y estimare este modelo en todo el *train set*. En el *validation set*, lo utilizaré para escoger entre los modelos. Con el *test set*, estimaré el error de generalización para el algortimo escogido en el último paso. 
+
+En todos los pasos, la medida de evaluación que utilizaré será el *Mean Square Error*, dado que estamos en el contexto de un problema de regresión. 
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+source("3-Hipotesis.R")
+set.seed(2)
+datasets <- split_train_validation_test(base_datos)
+```
+
+## Algoritmos poca varianza
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ridge <- ridge_regression(datasets)
+lasso <- lasso_regression(datasets)
+reg <- regresion_simple(datasets)
+```
+
+*Ridge regression* es una variación de una regresión simple, donde se penaliza el tamaño (suma al cuadrado de los coeficientes) de los coeficientes en el proceso de optimización. Mientras que en *lasso*, se penaliza por la suma de los valores absolutos de los coeficientes. Luego, con estos tipos de regularización, normalmente se consigue una mejor generalización que con una *regresión simple*. A continuación, muestro los errores en el validation set para cada uno de los tres tipos de regresión. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+rbind(ridge[[2]], reg[[2]], lasso[[2]]) %>% 
+  rename(validation_error = mse, type_of_regression = name) %>% 
+  arrange(validation_error)
+```
+
+En conclusión, ninguna de los tipos de regularización funcionó, pues la regresión simple fue la que mejor resultado. Por lo tanto, podemos concluir que hay espacio para utilizar algoritmos que consideren espacios de hipótesis más complejos y podamos mejorar el error de validación. 
+
+## Algoritmos mayor varianza: Gradient Boosting Trees
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+gbm_results <- gbm_over(datasets, base_datos)
+gbm_results[[2]]
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+gbm_results[[2]]$hyperparameter
+```
+
+En comparación a los modelos de regresión, el espacio de hipótesis de este algoritmo es muchísimo más amplio. Uno de los problemas de trabajar con este tipo de modelos es la posibilidad de *overfitting*. Problema que tiene este algoritmo: la diferencia entre el error de validación y el error en el training set es muy grande. Luego, el modelo está aprendiendo parte del "ruido" que hay en el training set; como este "ruido" no está presente en el *validation set*, los resultados de predicción empeoran.
+
+Aún así, el algoritmo predice mejor los valores medios de los inmuebles en los barrios para el *validation set* que cualquiera de los otros algoritmos de regresión utilizados. 
+
+Luego, la existencia de un algoritmo más apropiado para el problema, pero aún con problemas de *overfitting*, abre la posibilidad a seguir trabajando en un algoritmo con una complejidad intermedia y que mejore aún más los resultados al predecir. 
+
+## Conclusión
+
+De los cuatro algoritmos utilizados, el más complejo, *Gradient Boosting trees*, fue el que mejor resultados dio en el *validation set*. Sin embargo, el modelo sufre de *overfitting*. Por esto, existe la posibilidad de encontrar un mejor algoritmo con una complejidad intermedia y que mejore los resultados de predicción. 
+
+Por último, este es el error del modelo en el *test set*:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+cat("El error en el test set es: " , gbm_results[[3]])
+```
+
+# 3. ¿Qué otras variables cree que podrían afectar el precio de la vivienda y que no están incluidas en el conjunto?
+
+Las variables que más podrían ayudar a mejorar la predicción son las variables que describen el estado del inmueble en cuestión, ya que de este tipo solo está **cuarto**. Es decir, la mayoría de las variables se concentran en describir la calidad de vida en el barrio en la que están los inmuebles, pero no el tamaño, edad del inmueble, remodelaciones hechas, tipo de piso, tipo de construcción, # de baños, tipo de cocina, et cetera, promedio de los inmuebles en cuestion. 
+
+Es por esto que la mayoría de las variables, que en general miden lo mismo (calidad de vida en barrio), están muy correlacionadas entre sí (ver Matriz correlaciones) y al final se pueden resumir por una variable: **pobreza** (ver importancia predictiva de las variables). Igualmente, es por esta razón que la variable **cuartos** tiene tanta importancia (ver importancia predictiva de las variables): es la única que mide algo distinto al resto de las variables. 
+
+Una forma de confirmar esto matemáticamente es mediante *Principal Component Analysis*. Con este algoritmo, podemos ver las combinaciones de las variables tales que las observaciones varien lo máximo, y estas combinaciones sean independientes entre sí. 
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggfortify)
+x <- as.matrix(base_datos %>% select(-c(valor, index)) %>% mutate_all(as.numeric))
+pca <- prcomp(x, scale. = TRUE)
+autoplot(pca, alpha = 0.3, loadings = TRUE, loadings.colour = 'red3',
+         loadings.label = TRUE, loadings.label.size = 3) +
+  theme_ipsum_rc() +
+  labs(title = "Principal Components Loadings")
+```
+
+
+Este *biplot* se entiende de la siguiente forma: entre más horizontal la línea de cada variable, más importante es en el primer componente (primera combinación lineal), y entre más vertical, más importante en el segundo componente. De otro lado, entre más cerca las líneas entre sí, más correlacionadas están las respectivas líneas entre sí. 
+
+Por lo tanto, se ve que la mayoría de las variables son horizontales, y se concentran en crear un primer componente que mide la calidad de vida al ponderar por **tasaeducativa, pobreza, crimen, industrial, oxidonitroso, impuestos, movilidad, distanciaempleo, residencial**, mientras el segundo componente mide otras características: como **cuartos, rio, coordx, coordy**. Es decir, una combinación del tamaño promedio de los inmuebles y su ubicación geográfica. Luego, vemos que hay mucho *overlap* en lo que miden las variables, y hay espacio para utilizar otro tipo de variables que midan lo que **cuarto** no logre capturar de las características de los inmuebles. 
+
+## Conclusión
+
+Intuitivamente, muchas de las variables en los datos miden una misma característica: la calidad de vida en el barrio medida por calidad de medio ambiente, educación, crimen, et cetera. Otras, miden la ubicación geográfica en la ciudad, como **río, coordy, coordx**. Sin embargo, solo **cuartos** mide el tamaño y calidad promedio de los inmuebles. Estas conclusiones las confirmé mediante un análisis de *PCA*. 
+
+Luego, las variables que pueden afectar el precio promedio de los inmuebles y que no logran capturar los modelos son las variables que tienen que ver con los inmuebles en sí y que **cuartos** no logra capturar. Tales como: el tamaño, edad del inmueble, remodelaciones hechas, tipo de piso, tipo de construcción, # de baños, tipo de cocina, et cetera, promedio de los inmuebles en cuestion. 
+
+# 4. Dada la información disponible, ¿cuales considera que son observaciones atípicas?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+gbm_results[[4]] %>% 
+  ggplot(aes(x = y_total, y = y_todos)) +
+    geom_point(alpha = 0.5) +
+    geom_abline(intercept = 0, slope = 1) +
+    theme_ipsum_rc() +
+  scale_y_continuous(limits = c(0, 1000)) +
+  scale_x_continuous(limits = c(0, 1000)) +
+  labs(x = "Valor", y = "Valor Predicho",
+       title = "Valor vs. Valor Predicho",
+       subtitle = "Línea: y = x")
+```
 
 
 
