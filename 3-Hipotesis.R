@@ -112,8 +112,9 @@ regresion_simple <- function(datasets) {
 
 ################ GBM ################ 
 
-gbm_over <- function(datasets, base_datos) {
+gbm_over <- function(datasets, base_datos, cache = TRUE) {
   
+  if (!cache) {
   train <- datasets[[1]] %>% select(-index)
   y <- train %>% select(valor)
   
@@ -158,6 +159,11 @@ gbm_over <- function(datasets, base_datos) {
   total <- tibble::tibble(y_total, y_todos)
   
   devolver <- list(plot = NA, resultados = resultados, test_error = test_error, pred = total)
+  }
+  else {
+    gbm_results <- read_rds(path = "gbm_results.rds")
+    gbm_results
+  }
 }
 
 

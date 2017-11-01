@@ -7,6 +7,15 @@ output:
     toc: true
 ---
 
+# Resumen Ejecutivo
+
+
+1. Las dos variables que determinan el precio de la vivienda son **pobreza y cuartos**. Capturan la calidad de vida en el barrio y la calidad de los inmuebles promedio en el barrio, respectivamente.
+2. La mejor predicción de la variable **valor** la logré con un modelo *GBM*. Sin embargo, sufre de *overfitting* y hay posibilidad de mejora en un algoritmo menos complejo. 
+3. Otras variables que pueden determinar **valor** son variables que capturen las características promedio de los inmuebles. De este tipo de variables solo está **cuartos** en los datos. 
+4. Las observaciones atípicas son las que tienen en **valor** exactamente el valor máximo dentro de la muestra, $955.01$. 
+
+
 # 0. Organización
 
 En este documento doy respuesta a las cuatro preguntas en el mismo orden en que fueron
@@ -130,7 +139,7 @@ random_forest_importance(base_datos)
 ```
 
 
-El gráfico anterior muestra el poder predictivo de cada variable dentro del algoritmo de **Random Forest** que estimamos para toda los datos. En ellos, las variables que mayor poder predictivo tienen siguen siendo: **cuartos y pobreza**. 
+El gráfico anterior muestra el poder predictivo de cada variable dentro del algoritmo de **Random Forest** que estimamos para toda los datos. El poder predictivo se calcula de la siguiente manera: en los árboles de decisión, se particiona el espacio secuencialmente una variable a la vez. El poder predictivo es la disminución del error al particionar por cada variable, promediado a través de los árboles. Así, las variables que mayor poder predictivo tienen siguen siendo: **cuartos y pobreza**. 
 
 ## Conclusión
 
@@ -170,7 +179,7 @@ rbind(ridge[[2]], reg[[2]], lasso[[2]]) %>%
   arrange(validation_error)
 ```
 
-En conclusión, ninguna de los tipos de regularización funcionó, pues la regresión simple fue la que mejor resultado. Por lo tanto, podemos concluir que hay espacio para utilizar algoritmos que consideren espacios de hipótesis más complejos y podamos mejorar el error de validación. 
+En conclusión, ninguna de los tipos de regularización funcionó, pues la regresión simple fue la que dio mejor resultado. Por lo tanto, podemos concluir que hay espacio para utilizar algoritmos que consideren espacios de hipótesis más complejos y podamos mejorar el error de validación. 
 
 ## Algoritmos mayor varianza: Gradient Boosting Trees
 
@@ -231,19 +240,76 @@ Luego, las variables que pueden afectar el precio promedio de los inmuebles y qu
 
 # 4. Dada la información disponible, ¿cuales considera que son observaciones atípicas?
 
+Podemos calificar una observación atípica como una observación que no conforma con el comportamiento general de las observaciones. Luego, para calificar una observación como atípica, primero hay que afirmar cuál es el comportamiento general de las observaciones. 
+
+Para esto, voy a utilizar dos metodologías: en una primera, voy a hacer el supuesto de que los datos provienen de la familia de una normal multivariada. Sin embargo, para escapar las multiples dimensiones y que el supuesto de normalidad sea más apropiada, haré esto sobre las variables después de haberlas llevado a $R^2$ con PCA. Después, estimando los dos coeficientes $\mu, \Sigma$ mediante sus análogos muestrales, podré dar una probabilidad estimada de realización a cada observación. Definiendo una probabilidad cut-off, podré calificar observaciones con baja probabilidad como atípica. En la segunda metodología, utilizaré el modelo *GBM* estimado inicialmente, y predeciré para todos los datos. Dónde haya una discrepancia "grande" entre lo predicho y lo realizado, lo calificare como atípico.
+
+## Normal Multivariada
+
+Una normal multivariada es una familia de distribuciones como la siguiente:
+
+$$f(x)=(2\pi)^\frac{-k}{2} |\Sigma|^\frac{-1}{2}e^{-1/2(x-\mu)^{'} \Sigma^{-1}(x-\mu)}$$
+
+Al utilizar los análogos muestrales, obtengo una distribución estimada para calificar cada observación.  La distribución de las probabilidades estimadas es la siguiente: 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+source("4-Atípico.R")
+probas <- multivariate_normal(base_datos = base_datos)
+probas %>% 
+  ggplot(aes(x = valor, y = probabilities)) +
+    geom_point(aes(color = probabilities)) +
+    theme_ipsum_rc() +
+  scale_color_viridis()
+```
+
+
+Es decir, el modelo da una baja probabilidad y por ende califica como observaciones atípicas las observaciones que tienen **valor** muy alto. Los índices de las $10$ observaciones atípicas son las siguientes:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+probas %>% 
+  arrange(probabilities) %>%
+  mutate(probabilities = round(probabilities, 4)) %>% 
+  dplyr::select(index, probabilities, valor) %>% 
+  head(10)
+```
+
+ La mayoría de estas observaciones tienen un **valor** de $955.01$, el máximo en la muestra. Ante la improbabilidad de que tengan exactamente el mismo **valor**, probablemente sea razón de un truncamiento de la variable. En un trabajo posterior, tendríamos que tener esto en cuenta. 
+ 
+## Predicciones
+
+Como dije anteriormente, si el modelo *GBM* ha logrado capturar información valiosa, las observaciones en las que las predicciones muestren discrepancias pueden ser calificadas como atípicas. 
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 gbm_results[[4]] %>% 
-  ggplot(aes(x = y_total, y = y_todos)) +
+  dplyr::rename(valor = y_total, valor_predicho = y_todos) %>% 
+  mutate(diff = abs(valor - valor_predicho)) %>% 
+  ggplot(aes(x = valor, y = valor_predicho, color = diff)) +
     geom_point(alpha = 0.5) +
     geom_abline(intercept = 0, slope = 1) +
     theme_ipsum_rc() +
   scale_y_continuous(limits = c(0, 1000)) +
   scale_x_continuous(limits = c(0, 1000)) +
+  scale_color_viridis() +
   labs(x = "Valor", y = "Valor Predicho",
        title = "Valor vs. Valor Predicho",
        subtitle = "Línea: y = x")
 ```
 
 
+Las 10 observaciones que calificaríamos de atípicas serían las siguientes:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+gbm_results[[4]] %>% 
+  dplyr::rename(valor = y_total, valor_predicho = y_todos) %>% 
+  mutate(diff = abs(valor - valor_predicho)) %>% 
+  arrange(desc(diff)) %>% 
+  dplyr::select(diff, valor)
+```
+
+Igual que en el análisis anterior, las observaciones con un **valor** de $955.01$, el máximo en la muestra, siguen siendo calificadas como atípicas muchas veces. Por lo tanto, la evidencia sigue apuntando a que existe un problema de truncamiento en la variable. 
+
+## Conclusión
+
+Después de realizar dos tipos de análisis distintos, califico de observaciones atípicas a todas las observaciones que tienen exactamente el mismo valor en la variable **valor**, el máximo en la muestra $955.01$. Que tengan el mismo valor coincidencialmente es extremadamente improbable, por lo que es mucho más convincente que existe un problema de truncamiento en la variable. 
 
 
