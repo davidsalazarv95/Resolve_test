@@ -4,6 +4,7 @@ library(tidyverse)
 library(corrplot)
 library(hrbrthemes)
 library(corrr)
+library(viridis)
 library(gridExtra)
 library(grid)
 
@@ -23,6 +24,23 @@ histograma_valor <- function(datos, binwidth = 50) {
          subtitle = paste0("Cada barra representa intervalos de ", binwidth ,". Mediana como línea: ", "$",round(medidas_centrales[['mediana']], 1)))
   
 }
+
+################ Location ################ 
+
+ubicación <- function(datos) {
+  
+  datos %>% 
+    ggplot(aes(x = coordx, y = coordy, color = valor, size = valor)) +
+      geom_point() +
+      scale_color_viridis() +
+      theme_ipsum_rc()
+      
+}
+
+
+
+
+
 
 ################ Variación conjunta ################ 
 

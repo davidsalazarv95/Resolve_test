@@ -10,14 +10,14 @@ output:
 # 0. Organización
 
 En este documento doy respuesta a las cuatro preguntas en el mismo orden en que fueron
-formualdas. Cada sección en adelante representará una de las respectivas respuestas. El código detrás de todas las figuras y números presentados está disponible en [este](https://github.com/davidsalazarv95/Resolve_test) repositorio de GitHub. 
+formualdas. Cada sección en adelante representará una de las respectivas respuestas. El código detrás de todas las figuras y números presentados está disponible en [este](https://github.com/davidsalazarv95/Resolve_test) repositorio de GitHub. A lo largo del documento, utilizo los nombres de las variables que me proporcionaron en el archivo con las preguntas. 
 
 # 1. ¿Cuáles considera que son las variables que determinan el precio de la vivienda?
 
 Para entender qué variables determinan el precio promedio de las viviendas en los barrios, voy a investigar lo siguiente: 1) la variación de los precios y la variación conjunta de los precios con las otras variables; 2) el poder predictivo de estas variaciones. 
 
 Para responder esta pregunta utilizaré las siguientes herramientas. Primero, haré una exploración y
-análisis de datos, principalmente de la variable de interés: **valor** y de su relación con las otras variables en el archivo. Segundo, utilizaré dos algoritmos (**regresión multivariada** y **árboles de decisión**) para determinar el valor explicativo de cada una de las variables sobre **valor**. Tercero, utilizaré **Principal Component Analysis** para analizar qué combinación de variables son las que se relacionan con mayor variación de **valor**. Por último, concluiré la respuesta a esta pregunta. 
+análisis de datos, principalmente de la variable de interés: **valor** y de su relación con las otras variables en el archivo. Segundo, utilizaré dos algoritmos (**regresión multivariada** y **árboles de decisión**) para determinar el valor explicativo de cada una de las variables sobre **valor**. Por último, concluiré la respuesta a esta pregunta. 
 
 ## Exploración y análisis de datos
 
@@ -74,6 +74,72 @@ Es decir, a mayor proporción de personas clasificadas como pobres, y mayor núm
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 scatterplots(base_datos)
 ```
+
+### Ubicación
+
+En el análisis anterior, se pudo establecer la relación líneal entre cada variable y la variable **valor**. Sin embargo, podemos decir que para el caso de la ubicación (**coordy, coordx**), lo que importa es la interacción entre estas para predecir **valor**. Si esto es correcto, habrá clusters de barrios con valores medios de inmuebles muy similares. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ubicación(base_datos)
+```
+
+Exceptuando un cluster en el centro de la ciudad con valores medios inferiores a la media, no hay una tendencia general que muestre clusters de barrios. Luego, no parece que la interacción entre estas variables de coordenadas ofrezcan riqueza de información. 
+
+### Conclusión
+
+Gracias a la exploración de análisis de datos, podemos concluir lo siguiente:
+
+1. Los precios medios de inmuebles en el barrio tienen una distribución con una cola derecha más larga que la izquierda. Es decir, hay barrios con precios mucho superiores a la media de la distribución. 
+
+2. Los precios medios de los inmuebles en los barrios tienen relaciones líneales negativas con **tasaeducativa, crimen, pobreza, movilidad, impuestos, industrial, oxidonitroso**. Exceptuando el número de cuartos promedio, ninguna variable tiene correlaciones positivas de resaltar con el precio medio de los inmuebles en los barrios. 
+
+## Valor explicativo de las variables
+
+El ejercicio anterior no tuvo en cuenta tres características necesarias para definir qué variables determinan la variable **valor**. **Primero**, no tuvo en cuenta la variación simultánea de las variables. Es decir, puede que el porcentaje del barrio construido industrialmente solo esté relacionado con **valor** negativamente porque a mayor porcentaje del barrio construido industrialmente hay pobreza. Luego, al ver la variación simultánea de pobreza y porcentaje industrial, podríamos concluir. **Segundo**, vimos variación conjunta pero no tuvimos en cuenta la significancia estadística de estas relaciones. **Tercero**, no tuvimos en cuenta el poder predictivo de estas variaciones conjuntas. El propósito de esta sección es verificar estas tres características y así poder definir qué variables son las más importantes al explicar el precio medio de los inmuebles en un barrio. 
+
+Para remediar los dos primeros puntos, construiré una regresión lineal con la variable valor como variable dependiente. Es decir, estimaré la siguiente ecuación utilizando la totalidad de la muestra: 
+
+$$ valor_i = \alpha + \beta_1 * crimen_i + \beta_2 * residencial + \beta_3 * industrial_i + \beta_4 * rio_i +
+ \beta_5 * oxidonitroso_i + \beta_6 * cuartos_i + \beta_7 * distanciaempleo_i \\ + beta_8 *movilidad_i + beta_9 *tasaeducativa_i + \beta_{10} * pobreza + \beta_{11} * coordx + beta_{12} * coordy $$
+ 
+Para remediar el tercer punto, estimaré un modelo de árboles de regresión que nos ayude a ver la importancia relativa de cada variable para predecir el precio medio de los inmuebles en un barrio.  
+
+### Regresión
+
+Voy a estimar la regresión antes referida, pero con la salvedad que voy a estandarizar las variables continuas tal que tengan media $0$ y desviación estándar de $1$. Así, al comparar los coeficientes, la interpretación será la misma para todas las variables continuas: dado un aumento de una desviación en la variable $i$, ceteris paribus, qué tanto predecimos que aumentará la variable **valor**
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+source("2-Valor_Explicativo.R")
+regresion(base_datos)
+```
+
+La interpretación del gráfico es la siguiente: el punto es el estimado del coeficiente respectivo, mientras que la barra cubre la totalidad del intervalo de confianza. Si el intervalo de confianza cubre cero, el estimado no es estadísticamente significativo. 
+
+Con respeccto a nuestros análisis anteriores, tanto **pobreza, tasaeducativa y cuartos** siguen teniendo efectos estimados altos (de alrededor de cambios en $50 por cada desviación estándar de cada variable, teniendo en cuenta que las primeras dos tienen un efecto negativo y la última un efecto positivo) sobre el precio medio de los inmuebles en los barrios. Luego, este ejercicio confirma que estas variables determinan en gran parte la variable **valor**. 
+
+Por otro lado, las variables que no habíamos incluido antes en el análisis, están estimadas de manera muy imprecisa. Es decir, aunque sus coeficientes estimados pueden ser altos, sus intervalos de confianza son muy amplios, aún cuando no cubren el cero. Por esto, seguiré sin incluirlas como variables determinantes. 
+
+Por último, vimos en la matriz de correlación que muchas de las variables estaban altamente correlacionadas entre sí. Esto puede generar multicolinealidad y que estimemos imprecisamente las variables. Una posible solución en un trabajo posterior sería realizar primero **Principal Component Analysis** y correr una regresión sobre los componentes obtenidos. 
+
+### Árboles de regresión
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+random_forest_importance(base_datos)
+```
+
+
+El gráfico anterior muestra el poder predictivo de cada variable dentro del algoritmo de **Random Forest** que estimamos para toda los datos. En ellos, las variables que mayor poder predictivo tienen siguen siendo: **cuartos y pobreza**. 
+
+## Conclusión
+
+Después de realizar un análisis exploratorio de los datos, un análisis de regresión, y un análisis del valor predictivo de las variables, dos variables resaltaron siempre a través del ejercicio: **cuartos y pobreza**. Por un lado, **pobreza** es una variable que está correlacionada con todas las otras variables que determinan la calidad de vida en un barrio (contaminación, tasa educativa, crimen, et cetera) y, por otro, **cuartos** parece recoger el efecto de muchas variables que determinan la calidad y tamaño de los edificios, variables que no están presentes en los datos. 
+
+Luego, el valor medio de los inmuebles en el barrio está determinado por dos tipos de variables. Primero, una que determina la calidad de vida dentro del barrio. En este caso, **pobreza** tiene suficiente riqueza de información y es la más importante dentro de este tipo de variables. Segundo, la calidad del inmueble a comprar dentro del barrio, que en este caso es recogida en los datos por la variable **cuartos**.
+
+Por lo tanto, concluyo que las variables que principalmente determinan el precio medio de los inmuebles dentro de un barrio son: **la proporción de personas clasificadas como pobres y el número de cuartos promedio**.
+
 
 
 
